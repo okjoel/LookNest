@@ -47,12 +47,28 @@ const server = app.listen(PORT, () => {
 
 // WebSocket server
 const wss = new WebSocket.Server({ server });
+global.wss = wss;
 
 wss.on('connection', (ws) => {
   console.log('WebSocket connected');
   ws.on('message', (message) => {
-    console.log('Received:', message);
-    // Handle incoming messages
+    try {
+      const data = JSON.parse(message.toString());
+      if (data.type === 'auth' && data.token) {
+        // Verify token
+        const jwt = require('jsonwebtoken');
+        try {
+          const decoded = jwt.verify(data.token, process.env.JWT_SECRET);
+          ws.userId = decoded.userId;
+          console.log('WebSocket authenticated for user:', ws.userId);
+        } catch (error) {
+          console.error('WebSocket auth failed:', error);
+          ws.close();
+        }
+      }
+    } catch (error) {
+      console.error('WebSocket message error:', error);
+    }
   });
   ws.on('close', () => {
     console.log('WebSocket disconnected');

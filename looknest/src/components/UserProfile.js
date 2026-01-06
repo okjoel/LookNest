@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './UserProfile.css';
+import PhotoModal from './PhotoModal';
 
 function UserProfile({ userId, onMessage }) {
   const [user, setUser] = useState(null);
@@ -12,6 +13,9 @@ function UserProfile({ userId, onMessage }) {
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const checkFollowStatus = useCallback(async () => {
     try {
@@ -69,6 +73,66 @@ function UserProfile({ userId, onMessage }) {
       setLoading(false);
     }
   }, [userId, fetchUserProfile, fetchUserPhotos]);
+
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+    }
+  };
+
+  const handlePhotoClick = async (photo) => {
+    try {
+      // Fetch full photo details with comments and likes
+      const response = await fetch(`http://localhost:5000/api/photos/${photo._id}`);
+      if (response.ok) {
+        const fullPhoto = await response.json();
+        setSelectedPhoto(fullPhoto);
+        setShowPhotoModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching photo details:', error);
+    }
+  };
+
+  const handleLike = (photoId, isLiked) => {
+    // Update the photo in the local state
+    setPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, likes: isLiked ? [...photo.likes, currentUser] : photo.likes.filter(like => like._id !== currentUser._id) }
+          : photo
+      )
+    );
+  };
+
+  const handleComment = (photoId, newComment) => {
+    // Update the photo in the local state
+    setPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, comments: [...photo.comments, newComment] }
+          : photo
+      )
+    );
+  };
 
   const fetchFollowers = async () => {
     try {
@@ -237,7 +301,7 @@ function UserProfile({ userId, onMessage }) {
           </div>
         ) : (
           photos.map((photo) => (
-            <div key={photo._id} className="user-photo-item">
+            <div key={photo._id} className="user-photo-item" onClick={() => handlePhotoClick(photo)}>
               <img src={photo.imageUrl[0]} alt={photo.title} />
               {photo.imageUrl.length > 1 && (
                 <div className="photo-count">+{photo.imageUrl.length - 1}</div>
@@ -287,6 +351,16 @@ function UserProfile({ userId, onMessage }) {
             <button className="close-btn" onClick={() => setShowFollowingModal(false)}>Close</button>
           </div>
         </div>
+      )}
+
+      {showPhotoModal && selectedPhoto && (
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={() => setShowPhotoModal(false)}
+          currentUser={currentUser}
+          onLike={handleLike}
+          onComment={handleComment}
+        />
       )}
     </div>
   );

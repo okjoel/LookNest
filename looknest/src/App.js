@@ -23,10 +23,32 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     initSocket();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+    }
+  };
 
   const handleSignupComplete = (userData) => {
     setNewUserData(userData);
@@ -93,7 +115,7 @@ function App() {
         onUploadSuccess={handleUploadSuccess}
       />
       <main className="main-content">
-        {currentView === 'home' && <MasonryGrid key={refreshKey} searchQuery={searchQuery} onUserClick={handleUserClick} />}
+        {currentView === 'home' && <MasonryGrid key={refreshKey} searchQuery={searchQuery} onUserClick={handleUserClick} currentUser={currentUser} />}
         {currentView === 'dashboard' && <Dashboard />}
         {currentView === 'messages' && <Messages />}
         {currentView === 'profile' && <Profile />}
