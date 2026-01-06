@@ -1,8 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Navbar.css';
+import { addMessageListener, removeMessageListener } from '../socket';
 
 function Navbar({ onProfileClick, onSearch }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    fetchCurrentUser();
+    const handleMessage = (data) => {
+      if (data.type === 'profile_updated') {
+        fetchCurrentUser();
+      }
+    };
+    addMessageListener(handleMessage);
+    return () => {
+      removeMessageListener(handleMessage);
+    };
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+    }
+  };
 
   const handleSearch = () => {
     if (onSearch) {
@@ -64,9 +99,13 @@ function Navbar({ onProfileClick, onSearch }) {
       <div className="navbar-right">
         <div className="profile-menu" onClick={onProfileClick} style={{ cursor: 'pointer' }}>
           <div className="profile-avatar">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
+            {user?.profileImage ? (
+              <img src={user.profileImage} alt={user.fullName} className="profile-avatar-img" />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            )}
           </div>
         </div>
       </div>

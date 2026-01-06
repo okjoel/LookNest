@@ -25,6 +25,9 @@ function SignupModal({ onClose, onSwitchToLogin, onSignupSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.errors && data.errors.length > 0) {
+          throw new Error(data.errors[0].msg || 'Validation error');
+        }
         throw new Error(data.message || 'Signup failed');
       }
 

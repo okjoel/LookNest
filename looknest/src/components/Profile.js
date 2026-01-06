@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Profile.css';
+import { initSocket, addMessageListener, removeMessageListener } from '../socket';
+import PhotoModal from './PhotoModal';
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -8,9 +10,25 @@ function Profile() {
   const [showFollowingModal, setShowFollowingModal] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
+  const [userPhotos, setUserPhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
+    initSocket();
+    const handleMessage = (data) => {
+      if (data.type === 'following_updated' || data.type === 'followers_updated') {
+        fetchUserProfile();
+      } else if (data.type === 'photo_uploaded' && user) {
+        fetchUserPhotos(user._id);
+      }
+    };
+    addMessageListener(handleMessage);
+    return () => {
+      removeMessageListener(handleMessage);
+    };
   }, []);
 
   const fetchUserProfile = async () => {
@@ -24,6 +42,8 @@ function Profile() {
       const userData = await response.json();
       if (response.ok) {
         setUser(userData);
+        // Fetch user's photos after getting user data
+        fetchUserPhotos(userData._id);
       } else {
         console.error('Failed to fetch profile:', userData.message);
       }
@@ -34,10 +54,63 @@ function Profile() {
     }
   };
 
+  const fetchUserPhotos = async (userId) => {
+    try {
+      setPhotosLoading(true);
+      const response = await fetch(`http://localhost:5000/api/photos/user/${userId}`);
+      const photos = await response.json();
+      if (response.ok) {
+        setUserPhotos(photos);
+      } else {
+        console.error('Failed to fetch photos:', photos.message);
+      }
+    } catch (error) {
+      console.error('Error fetching photos:', error);
+    } finally {
+      setPhotosLoading(false);
+    }
+  };
+
+  const handlePhotoClick = async (photo) => {
+    try {
+      // Fetch full photo details with comments and likes
+      const response = await fetch(`http://localhost:5000/api/photos/${photo._id}`);
+      if (response.ok) {
+        const fullPhoto = await response.json();
+        setSelectedPhoto(fullPhoto);
+        setShowPhotoModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching photo details:', error);
+    }
+  };
+
+  const handleLike = (photoId, isLiked) => {
+    // Update the photo in the local state
+    setUserPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, likes: isLiked ? [...photo.likes, user] : photo.likes.filter(like => like._id !== user._id) }
+          : photo
+      )
+    );
+  };
+
+  const handleComment = (photoId, newComment) => {
+    // Update the photo in the local state
+    setUserPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, comments: [...photo.comments, newComment] }
+          : photo
+      )
+    );
+  };
+
   const fetchFollowers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/user/profile/followers', {
+      const response = await fetch(`http://localhost:5000/api/user/${user._id}/followers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -53,7 +126,7 @@ function Profile() {
   const fetchFollowing = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/user/profile/following', {
+      const response = await fetch(`http://localhost:5000/api/user/${user._id}/following`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -107,7 +180,7 @@ function Profile() {
 
           <div className="profile-stats">
             <div className="stat-item clickable" onClick={fetchFollowers}>
-              <span className="stat-number">{user.followers?.length || 0}</span>
+              <span className="stat-number">{(user.followers?.length || 0) + (user.followRequests?.length || 0)}</span>
               <span className="stat-label">Followers</span>
             </div>
             <div className="stat-item clickable" onClick={fetchFollowing}>
@@ -185,12 +258,40 @@ function Profile() {
             </div>
           </div>
         </div>
+
+        {/* User's Photos Section */}
+        <div className="profile-photos-section">
+          <h3>My Photos</h3>
+          {photosLoading ? (
+            <div className="photos-loading">Loading photos...</div>
+          ) : userPhotos.length === 0 ? (
+            <div className="no-photos">
+              <p>No photos uploaded yet</p>
+            </div>
+          ) : (
+            <div className="profile-photos-grid">
+              {userPhotos.map((photo) => (
+                <div key={photo._id} className="profile-photo-item" onClick={() => handlePhotoClick(photo)}>
+                  <img 
+                    src={photo.imageUrl[0]} 
+                    alt={photo.title} 
+                    className="profile-photo-image"
+                  />
+                  <div className="profile-photo-overlay">
+                    <h4>{photo.title}</h4>
+                    {photo.description && <p>{photo.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {showFollowersModal && (
         <div className="modal-overlay" onClick={() => setShowFollowersModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Followers</h2>
+            <h2>Followers ({followersList.length})</h2>
             <div className="modal-list">
               {followersList.length === 0 ? (
                 <p>No followers yet</p>
@@ -211,7 +312,7 @@ function Profile() {
       {showFollowingModal && (
         <div className="modal-overlay" onClick={() => setShowFollowingModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Following</h2>
+            <h2>Following ({followingList.length})</h2>
             <div className="modal-list">
               {followingList.length === 0 ? (
                 <p>Not following anyone yet</p>
@@ -227,6 +328,16 @@ function Profile() {
             <button className="close-btn" onClick={() => setShowFollowingModal(false)}>Close</button>
           </div>
         </div>
+      )}
+
+      {showPhotoModal && selectedPhoto && (
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={() => setShowPhotoModal(false)}
+          currentUser={user}
+          onLike={handleLike}
+          onComment={handleComment}
+        />
       )}
     </div>
   );

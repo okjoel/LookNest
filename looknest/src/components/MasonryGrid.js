@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './MasonryGrid.css';
+import PhotoModal from './PhotoModal';
 
-function MasonryGrid({ searchQuery, onUserClick }) {
+function MasonryGrid({ searchQuery, onUserClick, currentUser }) {
   const [allPhotos, setAllPhotos] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCarousel, setShowCarousel] = useState(false);
-  const [currentPhoto, setCurrentPhoto] = useState(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     fetchPhotos();
@@ -40,10 +40,40 @@ function MasonryGrid({ searchQuery, onUserClick }) {
     }
   };
 
-  const handleImageClick = (photo) => {
-    setCurrentPhoto(photo);
-    setCurrentImageIndex(0);
-    setShowCarousel(true);
+  const handleImageClick = async (photo) => {
+    try {
+      // Fetch full photo details with comments and likes
+      const response = await fetch(`http://localhost:5000/api/photos/${photo._id}`);
+      if (response.ok) {
+        const fullPhoto = await response.json();
+        setSelectedPhoto(fullPhoto);
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error('Error fetching photo details:', error);
+    }
+  };
+
+  const handleLike = (photoId, isLiked) => {
+    // Update the photo in the local state
+    setPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, likes: isLiked ? [...photo.likes, currentUser] : photo.likes.filter(like => like._id !== currentUser._id) }
+          : photo
+      )
+    );
+  };
+
+  const handleComment = (photoId, newComment) => {
+    // Update the photo in the local state
+    setPhotos(prevPhotos =>
+      prevPhotos.map(photo =>
+        photo._id === photoId
+          ? { ...photo, comments: [...photo.comments, newComment] }
+          : photo
+      )
+    );
   };
 
   if (loading) {
@@ -106,53 +136,14 @@ function MasonryGrid({ searchQuery, onUserClick }) {
         ))}
       </div>
 
-      {showCarousel && currentPhoto && (
-        <div className="carousel-overlay" onClick={() => setShowCarousel(false)}>
-          <div className="carousel-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="carousel-close" onClick={() => setShowCarousel(false)}>×</button>
-            <div className="carousel-content">
-              <img 
-                src={currentPhoto.imageUrl[currentImageIndex]} 
-                alt={`${currentPhoto.title} ${currentImageIndex + 1}`} 
-                className="carousel-image"
-              />
-              {currentPhoto.imageUrl.length > 1 && (
-                <>
-                  <button 
-                    className="carousel-nav carousel-prev"
-                    onClick={() => setCurrentImageIndex((prev) => (prev - 1 + currentPhoto.imageUrl.length) % currentPhoto.imageUrl.length)}
-                  >
-                    ‹
-                  </button>
-                  <button 
-                    className="carousel-nav carousel-next"
-                    onClick={() => setCurrentImageIndex((prev) => (prev + 1) % currentPhoto.imageUrl.length)}
-                  >
-                    ›
-                  </button>
-                  <div className="carousel-indicators">
-                    {currentPhoto.imageUrl.map((_, index) => (
-                      <span 
-                        key={index}
-                        className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
-                        onClick={() => setCurrentImageIndex(index)}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="carousel-info">
-              <h3>{currentPhoto.title}</h3>
-              {currentPhoto.description && <p>{currentPhoto.description}</p>}
-              {currentPhoto.user && (
-                <div className="carousel-user">
-                  By {currentPhoto.user.fullName || currentPhoto.user.username}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {showModal && selectedPhoto && (
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={() => setShowModal(false)}
+          currentUser={currentUser}
+          onLike={handleLike}
+          onComment={handleComment}
+        />
       )}
     </>
   );

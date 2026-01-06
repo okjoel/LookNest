@@ -62,6 +62,13 @@ router.put('/profile', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Emit to current user that profile updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.userId) {
+        client.send(JSON.stringify({ type: 'profile_updated' }));
+      }
+    });
+
     res.json({ message: 'Profile updated successfully', user });
   } catch (error) {
     console.error('Profile update error:', error);
@@ -137,21 +144,40 @@ router.post('/:userId/follow', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Follow request already sent' });
     }
 
-    // Add to follow requests of target user
-    userToFollow.followRequests.push(req.userId);
+    // Directly follow the user (assuming public accounts)
+    // Add to followers of target user
+    userToFollow.followers.push(req.userId);
     await userToFollow.save();
+
+    // Add to following of current user
+    currentUser.following.push(req.params.userId);
+    await currentUser.save();
 
     // Create notification for the target user
     const notification = new Notification({
       recipient: req.params.userId,
       sender: req.userId,
-      type: 'follow_request',
-      message: `${currentUser.fullName} sent you a follow request`
+      type: 'follow',
+      message: `${currentUser.fullName} started following you`
     });
     await notification.save();
-    console.log('Follow request notification created for user', req.params.userId, 'from', req.userId);
+    console.log('Follow notification created for user', req.params.userId, 'from', req.userId);
 
-    res.json({ message: 'Follow request sent successfully' });
+    // Emit to current user that following updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.userId) {
+        client.send(JSON.stringify({ type: 'following_updated' }));
+      }
+    });
+
+    // Emit to target user that followers updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.params.userId) {
+        client.send(JSON.stringify({ type: 'followers_updated' }));
+      }
+    });
+
+    res.json({ message: 'Followed successfully' });
   } catch (error) {
     console.error('Follow user error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -178,6 +204,20 @@ router.delete('/:userId/follow', authMiddleware, async (req, res) => {
     userToUnfollow.followers = userToUnfollow.followers.filter(id => id.toString() !== req.userId);
     await userToUnfollow.save();
 
+    // Emit to current user that following updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.userId) {
+        client.send(JSON.stringify({ type: 'following_updated' }));
+      }
+    });
+
+    // Emit to target user that followers updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.params.userId) {
+        client.send(JSON.stringify({ type: 'followers_updated' }));
+      }
+    });
+
     res.json({ message: 'User unfollowed successfully' });
   } catch (error) {
     console.error('Unfollow user error:', error);
@@ -199,7 +239,7 @@ router.post('/:userId/follow/accept', authMiddleware, async (req, res) => {
 
     // Check if follow request exists
     if (!currentUser.followRequests.includes(req.params.userId)) {
-      return res.status(400).json({ message: 'No follow request from this user' });
+      return res.status(200).json({ message: 'Follow request already accepted or does not exist' });
     }
 
     // Remove from follow requests
@@ -220,6 +260,20 @@ router.post('/:userId/follow/accept', authMiddleware, async (req, res) => {
       message: `${currentUser.fullName} accepted your follow request`
     });
     await notification.save();
+
+    // Emit to accepter that followers updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.userId) {
+        client.send(JSON.stringify({ type: 'followers_updated' }));
+      }
+    });
+
+    // Emit to requester that following updated
+    global.wss.clients.forEach(client => {
+      if (client.userId === req.params.userId) {
+        client.send(JSON.stringify({ type: 'following_updated' }));
+      }
+    });
 
     res.json({ message: 'Follow request accepted' });
   } catch (error) {
@@ -274,11 +328,11 @@ router.get('/:userId/followers', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const followers = await User.find({ _id: { $in: user.followers } }).select('username profilePicture');
+    const followers = await User.find({ _id: { $in: user.followers } }).select('fullName profileImage username');
     let result = followers.map(f => ({ ...f.toObject(), status: 'accepted' }));
 
     if (req.userId === req.params.userId) {
-      const pending = await User.find({ _id: { $in: user.followRequests } }).select('username profilePicture fullName');
+      const pending = await User.find({ _id: { $in: user.followRequests } }).select('fullName profileImage username');
       result = result.concat(pending.map(p => ({ ...p.toObject(), status: 'pending' })));
     }
 

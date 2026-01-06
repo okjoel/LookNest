@@ -1,6 +1,7 @@
 class WebSocketClient {
-  constructor(url) {
+  constructor(url, onMessage) {
     this.url = url;
+    this.onMessage = onMessage;
     this.socket = null;
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -15,11 +16,19 @@ class WebSocketClient {
       this.socket.onopen = () => {
         console.log('WebSocket connected');
         this.reconnectAttempts = 0;
+        // Send auth message
+        const token = localStorage.getItem('token');
+        if (token) {
+          this.send({ type: 'auth', token });
+        }
       };
 
       this.socket.onmessage = (event) => {
-        console.log('WebSocket message received:', event.data);
-        // Handle incoming messages
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+        if (this.onMessage) {
+          this.onMessage(data);
+        }
       };
 
       this.socket.onclose = () => {
