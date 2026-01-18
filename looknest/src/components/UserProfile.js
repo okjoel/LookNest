@@ -16,14 +16,13 @@ function UserProfile({ userId, onMessage }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isPrivate, setIsPrivate] = useState(false); // ✅ new state
 
   const checkFollowStatus = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/user/${userId}/follow-status`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       setIsFollowing(data.isFollowing);
@@ -40,7 +39,6 @@ function UserProfile({ userId, onMessage }) {
       if (response.ok) {
         setUser(userData);
         setFollowersCount(userData.followers?.length || 0);
-        // Check if current user is following this user (only if logged in)
         const token = localStorage.getItem('token');
         if (token) {
           checkFollowStatus();
@@ -55,7 +53,17 @@ function UserProfile({ userId, onMessage }) {
 
   const fetchUserPhotos = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/photos/user/${userId}`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/photos/user/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.status === 403) {
+        setIsPrivate(true); // ✅ mark as private
+        setPhotos([]);
+        return;
+      }
+
       const photosData = await response.json();
       setPhotos(photosData);
     } catch (error) {
@@ -84,9 +92,7 @@ function UserProfile({ userId, onMessage }) {
       if (!token) return;
 
       const response = await fetch('http://localhost:5000/api/user/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
@@ -100,7 +106,6 @@ function UserProfile({ userId, onMessage }) {
 
   const handlePhotoClick = async (photo) => {
     try {
-      // Fetch full photo details with comments and likes
       const response = await fetch(`http://localhost:5000/api/photos/${photo._id}`);
       if (response.ok) {
         const fullPhoto = await response.json();
@@ -113,7 +118,6 @@ function UserProfile({ userId, onMessage }) {
   };
 
   const handleLike = (photoId, isLiked) => {
-    // Update the photo in the local state
     setPhotos(prevPhotos =>
       prevPhotos.map(photo =>
         photo._id === photoId
@@ -124,7 +128,6 @@ function UserProfile({ userId, onMessage }) {
   };
 
   const handleComment = (photoId, newComment) => {
-    // Update the photo in the local state
     setPhotos(prevPhotos =>
       prevPhotos.map(photo =>
         photo._id === photoId
@@ -138,9 +141,7 @@ function UserProfile({ userId, onMessage }) {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/user/${userId}/followers`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       setFollowersList(data);
@@ -154,9 +155,7 @@ function UserProfile({ userId, onMessage }) {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/user/${userId}/following`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       setFollowingList(data);
@@ -169,11 +168,10 @@ function UserProfile({ userId, onMessage }) {
   const handleFollow = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-      // User is not logged in, redirect to login
       alert('Please log in to follow users');
       return;
     }
-    
+
     try {
       let method = 'POST';
       let newIsFollowing = isFollowing;
@@ -187,17 +185,13 @@ function UserProfile({ userId, onMessage }) {
       } else if (!isRequested) {
         method = 'POST';
         newIsRequested = true;
-        // count doesn't change yet
       } else {
-        // Already requested, do nothing
         return;
       }
 
       const response = await fetch(`http://localhost:5000/api/user/${userId}/follow`, {
         method,
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (response.ok) {
@@ -212,7 +206,6 @@ function UserProfile({ userId, onMessage }) {
       console.error('Error in follow action:', error);
     }
   };
-
   const handleMessage = () => {
     if (onMessage) {
       onMessage(user);
@@ -246,7 +239,9 @@ function UserProfile({ userId, onMessage }) {
             ) : (
               <div className="profile-avatar-large placeholder">
                 <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 
+                           1.79-4 4 1.79 4 4 4zm0 2c-2.67 
+                           0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                 </svg>
               </div>
             )}
@@ -294,22 +289,30 @@ function UserProfile({ userId, onMessage }) {
         </div>
       </div>
 
-      <div className="user-photos-grid">
-        {photos.length === 0 ? (
-          <div className="no-photos">
-            <p>No photos yet</p>
-          </div>
-        ) : (
-          photos.map((photo) => (
-            <div key={photo._id} className="user-photo-item" onClick={() => handlePhotoClick(photo)}>
-              <img src={photo.imageUrl[0]} alt={photo.title} />
-              {photo.imageUrl.length > 1 && (
-                <div className="photo-count">+{photo.imageUrl.length - 1}</div>
-              )}
+      {/* ✅ Private account fallback */}
+      {isPrivate ? (
+        <div className="private-profile">
+          <h2>This account is private</h2>
+          <p>Follow to see their posts and albums.</p>
+        </div>
+      ) : (
+        <div className="user-photos-grid">
+          {photos.length === 0 ? (
+            <div className="no-photos">
+              <p>No photos yet</p>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            photos.map((photo) => (
+              <div key={photo._id} className="user-photo-item" onClick={() => handlePhotoClick(photo)}>
+                <img src={photo.imageUrl[0]} alt={photo.title} />
+                {photo.imageUrl.length > 1 && (
+                  <div className="photo-count">+{photo.imageUrl.length - 1}</div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {showFollowersModal && (
         <div className="modal-overlay" onClick={() => setShowFollowersModal(false)}>

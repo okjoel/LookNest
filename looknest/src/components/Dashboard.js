@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -26,6 +26,20 @@ function Dashboard() {
 
   const maxViews = Math.max(...viewsData.map(d => d.views));
 
+  // Dropdown state + ref
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef();
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -34,11 +48,27 @@ function Dashboard() {
       </div>
 
       <div className="stats-grid">
+        {/* Profile Views card with dropdown */}
         <div className="stat-card">
           <div className="stat-icon profile-views">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-            </svg>
+            <div className="profile-menu" ref={menuRef}>
+              <div className="profile-icon" onClick={() => setMenuOpen(!menuOpen)}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 
+                  11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 
+                  17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 
+                  5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 
+                  3-1.34 3-3-1.34-3-3-3z"/>
+                </svg>
+              </div>
+              {menuOpen && (
+                <div className="dropdown">
+                  <button>Profile</button>
+                  <button>Settings</button>
+                  <button>Logout</button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="stat-info">
             <h3>Profile Views</h3>
@@ -47,10 +77,14 @@ function Dashboard() {
           </div>
         </div>
 
+        {/* Other stat cards unchanged */}
         <div className="stat-card">
           <div className="stat-icon photos-uploaded">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 
+              0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 
+              0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 
+              12l4.5 6H5l3.5-4.5z"/>
             </svg>
           </div>
           <div className="stat-info">
@@ -63,7 +97,15 @@ function Dashboard() {
         <div className="stat-card">
           <div className="stat-icon followers">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+              <path d="M16 11c1.66 0 2.99-1.34 
+              2.99-3S17.66 5 16 5c-1.66 0-3 
+              1.34-3 3s1.34 3 3 3zm-8 0c1.66 
+              0 2.99-1.34 2.99-3S9.66 5 8 
+              5C6.34 5 5 6.34 5 8s1.34 3 
+              3 3zm0 2c-2.33 0-7 1.17-7 
+              3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 
+              0c-.29 0-.62.02-.97.05 1.16.84 
+              1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
             </svg>
           </div>
           <div className="stat-info">
@@ -76,7 +118,10 @@ function Dashboard() {
         <div className="stat-card">
           <div className="stat-icon following">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              <path d="M12 12c2.21 0 4-1.79 
+              4-4s-1.79-4-4-4-4 1.79-4 
+              4 1.79 4 4 4zm0 2c-2.67 
+              0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
             </svg>
           </div>
           <div className="stat-info">
@@ -87,6 +132,7 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Chart Section */}
       <div className="chart-section">
         <div className="chart-header">
           <h2>Most Viewed Photos</h2>

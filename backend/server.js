@@ -7,13 +7,7 @@ const WebSocket = require('ws');
 // Load environment variables
 dotenv.config();
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/user');
-const photoRoutes = require('./routes/photo');
-const notificationRoutes = require('./routes/notifications');
-
-const app = express();
+const app = express(); // 👈 create app first
 
 // Middleware
 app.use(cors());
@@ -22,17 +16,25 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB Connected Successfully'))
-.catch((err) => {
-  console.error('❌ MongoDB Connection Error:', err.message);
-  console.log('💡 Please configure MONGODB_URI in .env file');
-});
+  .then(() => console.log('✅ MongoDB Connected Successfully'))
+  .catch((err) => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    console.log('💡 Please configure MONGODB_URI in .env file');
+  });
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/user');
+const photoRoutes = require('./routes/photo');
+const notificationRoutes = require('./routes/notifications');
+const settingsRoutes = require('./routes/settings');
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/user/settings', settingsRoutes); // 👈 now mounted correctly
 
 // Test route
 app.get('/', (req, res) => {
@@ -55,7 +57,6 @@ wss.on('connection', (ws) => {
     try {
       const data = JSON.parse(message.toString());
       if (data.type === 'auth' && data.token) {
-        // Verify token
         const jwt = require('jsonwebtoken');
         try {
           const decoded = jwt.verify(data.token, process.env.JWT_SECRET);

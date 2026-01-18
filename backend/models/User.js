@@ -1,6 +1,27 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const albumSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  photos: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Photo'
+  }],
+  visibility: {
+    type: String,
+    enum: ['public', 'private'],
+    default: 'public'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const userSchema = new mongoose.Schema({
   fullName: {
     type: String,
@@ -65,6 +86,13 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: []
   },
+  settings: {
+    language: { type: String, default: 'English' },
+    theme: { type: String, default: 'light' },
+    notifications: { type: Boolean, default: true },
+    privateProfile: { type: Boolean, default: false }
+  },
+  albums: [albumSchema], // ✅ new albums array
   createdAt: {
     type: Date,
     default: Date.now

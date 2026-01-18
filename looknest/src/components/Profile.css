@@ -399,3 +399,71 @@
   font-size: 18px;
   margin: 0;
 }
+/* Saved Albums Section */
+.profile-albums-section {
+  margin-top: 40px;
+  padding: 0 40px 40px;
+}
+
+.profile-albums-section h3 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111;
+  margin-bottom: 20px;
+}
+
+.saved-albums {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.album-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 16px;
+  transition: transform 0.2s;
+}
+
+.album-card:hover {
+  transform: translateY(-2px);
+}
+
+.album-card h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #e60023;
+}
+
+.album-photos {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.album-photos img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* Edit Profile Button */
+.edit-profile-btn {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #e60023;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.edit-profile-btn:hover {
+  background: #c00;
+}
