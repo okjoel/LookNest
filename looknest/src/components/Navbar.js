@@ -90,7 +90,7 @@ function Navbar({ onSearch }) {
         )}
         <div className="logo">LN</div>
       </div>
-
+{/* REPO */}
       <div className="navbar-center">
         <div className="search-container">
           <input 
