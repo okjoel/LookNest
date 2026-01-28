@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const Photo = require('../models/Photo');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // @route   POST /api/photos
 // @desc    Upload a new photo
@@ -18,14 +20,14 @@ router.post('/', authMiddleware, async (req, res) => {
       title,
       description,
       imageUrl: imageUrls,
-      user: req.userId
+      user: req.user.id
     });
 
     await photo.save();
 
     // Emit to current user that photo uploaded
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
+      if (client.userId === req.user.id) {
         client.send(JSON.stringify({ type: 'photo_uploaded' }));
       }
     });
@@ -45,7 +47,7 @@ router.get('/', async (req, res) => {
     const photos = await Photo.find()
       .populate('user', 'fullName username profileImage')
       .sort({ createdAt: -1 });
-    
+
     res.json(photos);
   } catch (error) {
     console.error('Get photos error:', error);
@@ -55,13 +57,26 @@ router.get('/', async (req, res) => {
 
 // @route   GET /api/photos/user/:userId
 // @desc    Get photos by user
-// @access  Public
-router.get('/user/:userId', async (req, res) => {
+// @access  Private if account is set to private
+router.get('/user/:userId', authMiddleware, async (req, res) => {
   try {
+    const targetUser = await User.findById(req.params.userId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isOwner = req.user.id === targetUser._id.toString();
+    const isFollower = targetUser.followers.includes(req.user.id);
+
+    if (targetUser.settings?.privateProfile && !isOwner && !isFollower) {
+      return res.status(403).json({ message: 'This account is private' });
+    }
+
     const photos = await Photo.find({ user: req.params.userId })
       .populate('user', 'fullName username profileImage')
       .sort({ createdAt: -1 });
-    
+
     res.json(photos);
   } catch (error) {
     console.error('Get user photos error:', error);
@@ -80,17 +95,15 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Photo not found' });
     }
 
-    // Check if user owns the photo
-    if (photo.user.toString() !== req.userId) {
+    if (photo.user.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
     await photo.deleteOne();
 
-    // Emit to current user that photo deleted
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
-        client.send(JSON.stringify({ type: 'photo_uploaded' })); // Reuse the same event type
+      if (client.userId === req.user.id) {
+        client.send(JSON.stringify({ type: 'photo_deleted' }));
       }
     });
 
@@ -112,37 +125,32 @@ router.post('/:id/like', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Photo not found' });
     }
 
-    const userIndex = photo.likes.indexOf(req.userId);
+    const userIndex = photo.likes.indexOf(req.user.id);
     let isLiked = false;
     let message = '';
 
     if (userIndex > -1) {
-      // Unlike
       photo.likes.splice(userIndex, 1);
       message = 'Photo unliked';
     } else {
-      // Like
-      photo.likes.push(req.userId);
+      photo.likes.push(req.user.id);
       isLiked = true;
       message = 'Photo liked';
 
-      // Create notification for photo owner
-      if (photo.user._id.toString() !== req.userId) {
+      if (photo.user._id.toString() !== req.user.id) {
         const notification = new Notification({
           recipient: photo.user._id,
-          sender: req.userId,
+          sender: req.user.id,
           type: 'like',
           message: `liked your photo "${photo.title}"`,
           photo: photo._id
         });
         await notification.save();
-        console.log('Like notification created for user', photo.user._id);
       }
     }
 
     await photo.save();
 
-    // Emit to photo owner
     global.wss.clients.forEach(client => {
       if (client.userId === photo.user._id.toString()) {
         client.send(JSON.stringify({ type: 'notification' }));
@@ -174,32 +182,27 @@ router.post('/:id/comment', authMiddleware, async (req, res) => {
     }
 
     const newComment = {
-      user: req.userId,
+      user: req.user.id,
       text: text.trim()
     };
 
     photo.comments.push(newComment);
     await photo.save();
 
-    // Populate the new comment for response
     await photo.populate('comments.user', 'fullName username profileImage');
-
     const addedComment = photo.comments[photo.comments.length - 1];
 
-    // Create notification for photo owner
-    if (photo.user._id.toString() !== req.userId) {
+    if (photo.user._id.toString() !== req.user.id) {
       const notification = new Notification({
         recipient: photo.user._id,
-        sender: req.userId,
+        sender: req.user.id,
         type: 'comment',
         message: `commented on your photo "${photo.title}": "${text.trim()}"`,
         photo: photo._id
       });
       await notification.save();
-      console.log('Comment notification created for user', photo.user._id);
     }
 
-    // Emit to photo owner
     global.wss.clients.forEach(client => {
       if (client.userId === photo.user._id.toString()) {
         client.send(JSON.stringify({ type: 'notification' }));

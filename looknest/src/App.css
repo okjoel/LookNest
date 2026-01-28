@@ -11,6 +11,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #ffffff;
+  color: #000000;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+body.dark {
+  background: #121212;
+  color: #f0f0f0;
 }
 
 .App {
@@ -20,6 +27,18 @@ body {
 .main-content {
   margin-left: 64px;
   margin-top: 64px;
-  background: #ffffff;
+  background: inherit; /* ✅ inherit from body */
   min-height: calc(100vh - 64px);
+}
+
+/* Example dark mode overrides */
+body.dark .navbar,
+body.dark .sidebar {
+  background: #181818;
+  color: #f0f0f0;
+}
+
+body.dark .card {
+  background: #1e1e1e;
+  border-color: #333;
 }

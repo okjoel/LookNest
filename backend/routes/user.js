@@ -10,7 +10,7 @@ const ProfileView = require('../models/ProfileView');
 // @access  Private
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select('-password');
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -27,11 +27,11 @@ router.get('/profile', authMiddleware, async (req, res) => {
 router.put('/profile', authMiddleware, async (req, res) => {
   try {
     const { fullName, username, phoneNumber, bio, gender, birthday, address, profileImage } = req.body;
-    
+
     // Check if username is already taken
     if (username) {
       const existingUser = await User.findOne({ username });
-      if (existingUser && existingUser._id.toString() !== req.userId) {
+      if (existingUser && existingUser._id.toString() !== req.user.id) {
         return res.status(400).json({ message: 'Username already taken' });
       }
     }
@@ -48,12 +48,12 @@ router.put('/profile', authMiddleware, async (req, res) => {
     };
 
     // Remove undefined fields
-    Object.keys(updateData).forEach(key => 
+    Object.keys(updateData).forEach(key =>
       updateData[key] === undefined && delete updateData[key]
     );
 
     const user = await User.findByIdAndUpdate(
-      req.userId,
+      req.user.id,
       { $set: updateData },
       { new: true }
     ).select('-password');
@@ -64,7 +64,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
 
     // Emit to current user that profile updated
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
+      if (client.userId === req.user.id) {
         client.send(JSON.stringify({ type: 'profile_updated' }));
       }
     });
@@ -92,13 +92,12 @@ router.get('/:userId', async (req, res) => {
       try {
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
-        const viewerId = decoded.userId;
+        const viewerId = decoded.id || decoded.userId;
 
         if (viewerId !== req.params.userId) {
-          // Check if this viewer has viewed this profile recently (within last hour)
           const recentView = user.profileViews.find(view =>
             view.viewer.toString() === viewerId &&
-            new Date() - new Date(view.viewedAt) < 60 * 60 * 1000 // 1 hour
+            new Date() - new Date(view.viewedAt) < 60 * 60 * 1000
           );
 
           if (!recentView) {
@@ -124,13 +123,13 @@ router.get('/:userId', async (req, res) => {
 router.post('/:userId/follow', authMiddleware, async (req, res) => {
   try {
     const userToFollow = await User.findById(req.params.userId);
-    const currentUser = await User.findById(req.userId);
+    const currentUser = await User.findById(req.user.id);
 
     if (!userToFollow) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (req.params.userId === req.userId) {
+    if (req.params.userId === req.user.id) {
       return res.status(400).json({ message: 'Cannot follow yourself' });
     }
 
@@ -140,38 +139,31 @@ router.post('/:userId/follow', authMiddleware, async (req, res) => {
     }
 
     // Check if request already sent
-    if (userToFollow.followRequests.includes(req.userId)) {
+    if (userToFollow.followRequests.includes(req.user.id)) {
       return res.status(400).json({ message: 'Follow request already sent' });
     }
 
     // Directly follow the user (assuming public accounts)
-    // Add to followers of target user
-    userToFollow.followers.push(req.userId);
+    userToFollow.followers.push(req.user.id);
     await userToFollow.save();
 
-    // Add to following of current user
     currentUser.following.push(req.params.userId);
     await currentUser.save();
 
     // Create notification for the target user
     const notification = new Notification({
       recipient: req.params.userId,
-      sender: req.userId,
+      sender: req.user.id,
       type: 'follow',
       message: `${currentUser.fullName} started following you`
     });
     await notification.save();
-    console.log('Follow notification created for user', req.params.userId, 'from', req.userId);
 
-    // Emit to current user that following updated
+    // Emit updates
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
+      if (client.userId === req.user.id) {
         client.send(JSON.stringify({ type: 'following_updated' }));
       }
-    });
-
-    // Emit to target user that followers updated
-    global.wss.clients.forEach(client => {
       if (client.userId === req.params.userId) {
         client.send(JSON.stringify({ type: 'followers_updated' }));
       }
@@ -190,29 +182,23 @@ router.post('/:userId/follow', authMiddleware, async (req, res) => {
 router.delete('/:userId/follow', authMiddleware, async (req, res) => {
   try {
     const userToUnfollow = await User.findById(req.params.userId);
-    const currentUser = await User.findById(req.userId);
+    const currentUser = await User.findById(req.user.id);
 
     if (!userToUnfollow) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Remove from following list of current user
     currentUser.following = currentUser.following.filter(id => id.toString() !== req.params.userId);
     await currentUser.save();
 
-    // Remove from followers list of target user
-    userToUnfollow.followers = userToUnfollow.followers.filter(id => id.toString() !== req.userId);
+    userToUnfollow.followers = userToUnfollow.followers.filter(id => id.toString() !== req.user.id);
     await userToUnfollow.save();
 
-    // Emit to current user that following updated
+    // Emit updates
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
+      if (client.userId === req.user.id) {
         client.send(JSON.stringify({ type: 'following_updated' }));
       }
-    });
-
-    // Emit to target user that followers updated
-    global.wss.clients.forEach(client => {
       if (client.userId === req.params.userId) {
         client.send(JSON.stringify({ type: 'followers_updated' }));
       }
@@ -224,14 +210,13 @@ router.delete('/:userId/follow', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 // @route   POST /api/users/:userId/follow/accept
 // @desc    Accept follow request
 // @access  Private
 router.post('/:userId/follow/accept', authMiddleware, async (req, res) => {
   try {
     const requester = await User.findById(req.params.userId);
-    const currentUser = await User.findById(req.userId);
+    const currentUser = await User.findById(req.user.id);
 
     if (!requester) {
       return res.status(404).json({ message: 'User not found' });
@@ -249,27 +234,23 @@ router.post('/:userId/follow/accept', authMiddleware, async (req, res) => {
     await currentUser.save();
 
     // Add to following of requester
-    requester.following.push(req.userId);
+    requester.following.push(req.user.id);
     await requester.save();
 
     // Create notification for the requester
     const notification = new Notification({
       recipient: req.params.userId,
-      sender: req.userId,
+      sender: req.user.id,
       type: 'follow',
       message: `${currentUser.fullName} accepted your follow request`
     });
     await notification.save();
 
-    // Emit to accepter that followers updated
+    // Emit updates
     global.wss.clients.forEach(client => {
-      if (client.userId === req.userId) {
+      if (client.userId === req.user.id) {
         client.send(JSON.stringify({ type: 'followers_updated' }));
       }
-    });
-
-    // Emit to requester that following updated
-    global.wss.clients.forEach(client => {
       if (client.userId === req.params.userId) {
         client.send(JSON.stringify({ type: 'following_updated' }));
       }
@@ -287,9 +268,8 @@ router.post('/:userId/follow/accept', authMiddleware, async (req, res) => {
 // @access  Private
 router.post('/:userId/follow/reject', authMiddleware, async (req, res) => {
   try {
-    const currentUser = await User.findById(req.userId);
+    const currentUser = await User.findById(req.user.id);
 
-    // Remove from follow requests
     currentUser.followRequests = currentUser.followRequests.filter(id => id.toString() !== req.params.userId);
     await currentUser.save();
 
@@ -305,12 +285,12 @@ router.post('/:userId/follow/reject', authMiddleware, async (req, res) => {
 // @access  Private
 router.get('/:userId/follow-status', authMiddleware, async (req, res) => {
   try {
-    const currentUser = await User.findById(req.userId);
+    const currentUser = await User.findById(req.user.id);
     const targetUser = await User.findById(req.params.userId);
-    
+
     const isFollowing = currentUser.following.includes(req.params.userId);
-    const isRequested = targetUser.followRequests.includes(req.userId);
-    
+    const isRequested = targetUser.followRequests.includes(req.user.id);
+
     res.json({ isFollowing, isRequested });
   } catch (error) {
     console.error('Check follow status error:', error);
@@ -331,7 +311,7 @@ router.get('/:userId/followers', authMiddleware, async (req, res) => {
     const followers = await User.find({ _id: { $in: user.followers } }).select('fullName profileImage username');
     let result = followers.map(f => ({ ...f.toObject(), status: 'accepted' }));
 
-    if (req.userId === req.params.userId) {
+    if (req.user.id === req.params.userId) {
       const pending = await User.find({ _id: { $in: user.followRequests } }).select('fullName profileImage username');
       result = result.concat(pending.map(p => ({ ...p.toObject(), status: 'pending' })));
     }
@@ -371,7 +351,6 @@ router.get('/:userId/views', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Only allow user to view their own profile views
     if (req.user.id !== req.params.userId) {
       return res.status(403).json({ message: 'Access denied' });
     }
@@ -396,16 +375,13 @@ router.delete('/:userId/followers/:followerId', authMiddleware, async (req, res)
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Only allow user to remove their own followers
     if (req.user.id !== req.params.userId) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Remove follower from user's followers array
     user.followers = user.followers.filter(id => id.toString() !== req.params.followerId);
     await user.save();
 
-    // Remove user from follower's following array
     follower.following = follower.following.filter(id => id.toString() !== req.params.userId);
     await follower.save();
 
