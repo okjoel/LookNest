@@ -1,3 +1,21 @@
+// @route   GET /api/users/:userId/saved-photos
+// @desc    Get user's saved photos
+// @access  Private
+router.get('/:userId/saved-photos', require('../middleware/auth'), async (req, res) => {
+  try {
+    if (req.userId !== req.params.userId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    const user = await require('../models/User').findById(req.userId).populate('savedPhotos');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user.savedPhotos);
+  } catch (error) {
+    console.error('Get saved photos error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
@@ -372,7 +390,8 @@ router.get('/:userId/views', authMiddleware, async (req, res) => {
     }
 
     // Only allow user to view their own profile views
-    if (req.user.id !== req.params.userId) {
+
+    if (req.userId !== req.params.userId) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

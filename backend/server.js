@@ -30,7 +30,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/notifications', notificationRoutes);
 

@@ -24,7 +24,7 @@ function Navbar({ onProfileClick, onSearch }) {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

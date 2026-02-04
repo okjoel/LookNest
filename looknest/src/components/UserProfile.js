@@ -20,7 +20,7 @@ function UserProfile({ userId, onMessage }) {
   const checkFollowStatus = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/user/${userId}/follow-status`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/follow-status`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -35,7 +35,7 @@ function UserProfile({ userId, onMessage }) {
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user/${userId}`);
+      const response = await fetch(`http://localhost:5000/api/users/${userId}`);
       const userData = await response.json();
       if (response.ok) {
         setUser(userData);
@@ -83,7 +83,7 @@ function UserProfile({ userId, onMessage }) {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -137,7 +137,7 @@ function UserProfile({ userId, onMessage }) {
   const fetchFollowers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/user/${userId}/followers`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/followers`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -153,7 +153,7 @@ function UserProfile({ userId, onMessage }) {
   const fetchFollowing = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/user/${userId}/following`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/following`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -193,7 +193,7 @@ function UserProfile({ userId, onMessage }) {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/user/${userId}/follow`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/follow`, {
         method,
         headers: {
           'Authorization': `Bearer ${token}`
@@ -234,6 +234,10 @@ function UserProfile({ userId, onMessage }) {
       </div>
     );
   }
+
+  const handleRemoveAllPhotos = () => {
+    setPhotos([]);
+  };
 
   return (
     <div className="user-profile-container">
@@ -295,14 +299,35 @@ function UserProfile({ userId, onMessage }) {
       </div>
 
       <div className="user-photos-grid">
+        <button className="remove-all-photos-btn" onClick={handleRemoveAllPhotos} style={{marginBottom: '16px', background: '#ff6b6b', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer'}}>
+          Remove All Uploaded Photos
+        </button>
         {photos.length === 0 ? (
           <div className="no-photos">
             <p>No photos yet</p>
           </div>
         ) : (
           photos.map((photo) => (
-            <div key={photo._id} className="user-photo-item" onClick={() => handlePhotoClick(photo)}>
-              <img src={photo.imageUrl[0]} alt={photo.title} />
+            <div key={photo._id} className="user-photo-item">
+              <div className="photo-image-wrapper" style={{position: 'relative', width: '100%', height: '100%'}}>
+                <img 
+                  src={photo.imageUrl[0]} 
+                  alt={photo.title} 
+                  className="profile-avatar-image"
+                  onClick={() => handlePhotoClick(photo)}
+                  style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                />
+                <button 
+                  className="delete-photo-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotos(photos.filter(p => p._id !== photo._id));
+                  }}
+                  title="Delete Photo"
+                >
+                  🗑
+                </button>
+              </div>
               {photo.imageUrl.length > 1 && (
                 <div className="photo-count">+{photo.imageUrl.length - 1}</div>
               )}

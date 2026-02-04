@@ -61,10 +61,25 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  profileViews: {
-    type: mongoose.Schema.Types.Mixed,
-    default: []
-  },
+  profileViews: [
+    {
+      viewer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      viewedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ],
+  savedPhotos: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Photo'
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

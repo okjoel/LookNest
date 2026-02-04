@@ -34,13 +34,11 @@ function App() {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch('/api/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-
       if (response.ok) {
         const userData = await response.json();
         setCurrentUser(userData);
@@ -97,26 +95,32 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar onProfileClick={() => setCurrentView('profile')} onSearch={handleSearch} />
-      <Sidebar 
-        onNotificationClick={() => setShowNotifications(!showNotifications)}
-        onUploadClick={() => setShowUpload(true)}
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+        onSearch={handleSearch}
+        currentUser={currentUser}
+        onProfileClick={() => setCurrentView('profile')}
+      />
+      <Sidebar
         onViewChange={setCurrentView}
-        currentView={currentView}
+        currentUser={currentUser}
+        onUploadClick={() => setShowUpload(true)}
+        onNotificationClick={() => setShowNotifications((prev) => !prev)}
         onLogout={handleLogout}
       />
-      <NotificationPanel 
-        isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
+      <NotificationPanel
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
-      <UploadModal 
-        isOpen={showUpload} 
+      <UploadModal
+        isOpen={showUpload}
         onClose={() => setShowUpload(false)}
         onUploadSuccess={handleUploadSuccess}
       />
       <main className="main-content">
-        {currentView === 'home' && <MasonryGrid key={refreshKey} searchQuery={searchQuery} onUserClick={handleUserClick} currentUser={currentUser} />}
-        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'home' && <MasonryGrid key={refreshKey} searchQuery={searchQuery} onUserClick={handleUserClick} currentUser={currentUser} onNavigate={setCurrentView} />}
+        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} />}
         {currentView === 'messages' && <Messages />}
         {currentView === 'profile' && <Profile />}
         {currentView === 'user-profile' && <UserProfile userId={selectedUserId} onMessage={handleMessage} />}
