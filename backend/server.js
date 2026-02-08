@@ -31,7 +31,7 @@ const settingsRoutes = require('./routes/settings');
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/user/settings', settingsRoutes); // 👈 now mounted correctly

@@ -82,21 +82,41 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  profileViews: {
-    type: mongoose.Schema.Types.Mixed,
-    default: []
-  },
-  settings: {
-    language: { type: String, default: 'English' },
-    theme: { type: String, default: 'light' },
-    notifications: { type: Boolean, default: true },
-    privateProfile: { type: Boolean, default: false }
-  },
-  albums: [albumSchema], // ✅ new albums array
-  createdAt: {
-    type: Date,
-    default: Date.now
+profileViews: [
+  {
+    viewer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    viewedAt: {
+      type: Date,
+      default: Date.now
+    }
   }
+],
+
+savedPhotos: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Photo'
+  }
+],
+
+settings: {
+  language: { type: String, default: 'English' },
+  theme: { type: String, default: 'light' },
+  notifications: { type: Boolean, default: true },
+  privateProfile: { type: Boolean, default: false }
+},
+
+albums: [albumSchema],
+
+createdAt: {
+  type: Date,
+  default: Date.now
+}
+
 });
 
 // Hash password before saving

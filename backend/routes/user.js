@@ -5,6 +5,25 @@ const User = require('../models/User');
 const Notification = require('../models/Notification');
 const ProfileView = require('../models/ProfileView');
 
+// @route   GET /api/users/:userId/saved-photos
+// @desc    Get user's saved photos
+// @access  Private
+router.get('/:userId/saved-photos', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.id !== req.params.userId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    const user = await User.findById(req.user.id).populate('savedPhotos');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user.savedPhotos);
+  } catch (error) {
+    console.error('Get saved photos error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/user/profile
 // @desc    Get current user profile
 // @access  Private
@@ -210,6 +229,7 @@ router.delete('/:userId/follow', authMiddleware, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 // @route   POST /api/users/:userId/follow/accept
 // @desc    Accept follow request
 // @access  Private

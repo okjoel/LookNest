@@ -1,3 +1,24 @@
+// @route   POST /api/photos/:photoId/save
+// @desc    Save a photo for the current user
+// @access  Private
+router.post('/:photoId/save', authMiddleware, async (req, res) => {
+  try {
+    const photoId = req.params.photoId;
+    const user = await require('../models/User').findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    if (user.savedPhotos.includes(photoId)) {
+      return res.status(400).json({ message: 'Photo already saved' });
+    }
+    user.savedPhotos.push(photoId);
+    await user.save();
+    res.json({ message: 'Photo saved successfully' });
+  } catch (error) {
+    console.error('Save photo error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
