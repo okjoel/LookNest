@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Sidebar.css';
-
 
 function Sidebar({ onNotificationClick, onUploadClick, onViewChange, currentView, onLogout, notificationCount }) {
   const [activeItem, setActiveItem] = useState(currentView || 'home');
+  const navigate = useNavigate();
 
   // Helper to check if item is active
   const getActive = (item) => activeItem === item;
 
-
-  const handleItemClick = (itemName, callback) => {
+  const handleItemClick = (itemName, path, callback) => {
     setActiveItem(itemName);
-    if (onViewChange && (itemName === 'home' || itemName === 'dashboard' || itemName === 'messages')) {
-      onViewChange(itemName);
-    }
+    if (path) navigate(path);
     if (callback) callback();
   };
 
@@ -21,32 +19,32 @@ function Sidebar({ onNotificationClick, onUploadClick, onViewChange, currentView
     <div className="sidebar">
       <div className="sidebar-top">
         {/* Home */}
-        <button 
+        <button
           className={`sidebar-item ${getActive('home') ? 'active' : ''}`}
           title="Home"
-          onClick={() => handleItemClick('home')}
+          onClick={() => handleItemClick('home', '/')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
           </svg>
         </button>
-        
+
         {/* Dashboard */}
-        <button 
+        <button
           className={`sidebar-item ${getActive('dashboard') ? 'active' : ''}`}
           title="Dashboard"
-          onClick={() => handleItemClick('dashboard')}
+          onClick={() => handleItemClick('dashboard', '/dashboard')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm0 9h7v7h-7v-7zm-9 0h7v7H4v-7z"/>
           </svg>
         </button>
-        
-        {/* Notification */}
-        <button 
+
+        {/* Notifications */}
+        <button
           className={`sidebar-item`}
           title="Notifications"
-          onClick={onNotificationClick}
+          onClick={() => handleItemClick('notification', null, onNotificationClick)}
           style={{ position: 'relative' }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -69,33 +67,33 @@ function Sidebar({ onNotificationClick, onUploadClick, onViewChange, currentView
             }}>{notificationCount}</span>
           )}
         </button>
-        
-        {/* Create/Upload Photo */}
-        <button 
+
+        {/* Upload Photo */}
+        <button
           className={`sidebar-item`}
           title="Upload Photo"
-          onClick={onUploadClick}
+          onClick={() => handleItemClick('upload', null, onUploadClick)}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
         </button>
-        
+
         {/* Messages */}
-        <button 
+        <button
           className={`sidebar-item ${getActive('messages') ? 'active' : ''}`}
           title="Messages"
-          onClick={() => handleItemClick('messages')}
+          onClick={() => handleItemClick('messages', '/messages')}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
           </svg>
         </button>
       </div>
-      
+
       <div className="sidebar-bottom">
         {/* Logout */}
-        <button 
+        <button
           className={`sidebar-item`}
           title="Logout"
           onClick={onLogout}

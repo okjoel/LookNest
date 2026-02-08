@@ -1,6 +1,27 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const albumSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  photos: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Photo'
+  }],
+  visibility: {
+    type: String,
+    enum: ['public', 'private'],
+    default: 'public'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const userSchema = new mongoose.Schema({
   fullName: {
     type: String,
@@ -61,29 +82,41 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  profileViews: [
-    {
-      viewer: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-      },
-      viewedAt: {
-        type: Date,
-        default: Date.now
-      }
-    }
-  ],
-  savedPhotos: [
-    {
+profileViews: [
+  {
+    viewer: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Photo'
+      ref: 'User',
+      required: true
+    },
+    viewedAt: {
+      type: Date,
+      default: Date.now
     }
-  ],
-  createdAt: {
-    type: Date,
-    default: Date.now
   }
+],
+
+savedPhotos: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Photo'
+  }
+],
+
+settings: {
+  language: { type: String, default: 'English' },
+  theme: { type: String, default: 'light' },
+  notifications: { type: Boolean, default: true },
+  privateProfile: { type: Boolean, default: false }
+},
+
+albums: [albumSchema],
+
+createdAt: {
+  type: Date,
+  default: Date.now
+}
+
 });
 
 // Hash password before saving
