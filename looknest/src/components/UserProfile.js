@@ -16,7 +16,7 @@ function UserProfile({ userId, onMessage }) {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isPrivate, setIsPrivate] = useState(false); // ✅ new state
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const checkFollowStatus = useCallback(async () => {
     try {
@@ -34,15 +34,14 @@ function UserProfile({ userId, onMessage }) {
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/user/${userId}`);
+      const response = await fetch(`http://localhost:5000/api/users/${userId}`);
       const userData = await response.json();
+
       if (response.ok) {
         setUser(userData);
         setFollowersCount(userData.followers?.length || 0);
         const token = localStorage.getItem('token');
-        if (token) {
-          checkFollowStatus();
-        }
+        if (token) checkFollowStatus();
       } else {
         console.error('Failed to fetch user profile:', userData.message);
       }
@@ -59,7 +58,7 @@ function UserProfile({ userId, onMessage }) {
       });
 
       if (response.status === 403) {
-        setIsPrivate(true); // ✅ mark as private
+        setIsPrivate(true);
         setPhotos([]);
         return;
       }
@@ -189,7 +188,7 @@ function UserProfile({ userId, onMessage }) {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/user/${userId}/follow`, {
+      const response = await fetch(`http://localhost:5000/api/users/${userId}/follow`, {
         method,
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -206,6 +205,7 @@ function UserProfile({ userId, onMessage }) {
       console.error('Error in follow action:', error);
     }
   };
+
   const handleMessage = () => {
     if (onMessage) {
       onMessage(user);
@@ -227,6 +227,10 @@ function UserProfile({ userId, onMessage }) {
       </div>
     );
   }
+
+  const handleRemoveAllPhotos = () => {
+    setPhotos([]);
+  };
 
   return (
     <div className="user-profile-container">
@@ -289,7 +293,6 @@ function UserProfile({ userId, onMessage }) {
         </div>
       </div>
 
-      {/* ✅ Private account fallback */}
       {isPrivate ? (
         <div className="private-profile">
           <h2>This account is private</h2>
@@ -297,14 +300,52 @@ function UserProfile({ userId, onMessage }) {
         </div>
       ) : (
         <div className="user-photos-grid">
+          <button
+            className="remove-all-photos-btn"
+            onClick={handleRemoveAllPhotos}
+            style={{
+              marginBottom: '16px',
+              background: '#ff6b6b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 16px',
+              cursor: 'pointer'
+            }}
+          >
+            Remove All Uploaded Photos
+          </button>
+
           {photos.length === 0 ? (
             <div className="no-photos">
               <p>No photos yet</p>
             </div>
           ) : (
             photos.map((photo) => (
-              <div key={photo._id} className="user-photo-item" onClick={() => handlePhotoClick(photo)}>
-                <img src={photo.imageUrl[0]} alt={photo.title} />
+              <div key={photo._id} className="user-photo-item">
+                <div
+                  className="photo-image-wrapper"
+                  style={{ position: 'relative', width: '100%', height: '100%' }}
+                >
+                  <img
+                    src={photo.imageUrl[0]}
+                    alt={photo.title}
+                    className="profile-avatar-image"
+                    onClick={() => handlePhotoClick(photo)}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  <button
+                    className="delete-photo-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPhotos(photos.filter(p => p._id !== photo._id));
+                    }}
+                    title="Delete Photo"
+                  >
+                    🗑
+                  </button>
+                </div>
+
                 {photo.imageUrl.length > 1 && (
                   <div className="photo-count">+{photo.imageUrl.length - 1}</div>
                 )}

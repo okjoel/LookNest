@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './MasonryGrid.css';
 import PhotoModal from './PhotoModal';
 
-function MasonryGrid({ searchQuery, onUserClick, currentUser }) {
+function MasonryGrid({ searchQuery, onUserClick, currentUser, onNavigate }) {
   const [allPhotos, setAllPhotos] = useState([]);
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +97,24 @@ function MasonryGrid({ searchQuery, onUserClick, currentUser }) {
     );
   }
 
+  const handleSavePhoto = async (photoId) => {
+    try {
+      const response = await fetch(`/api/photos/${photoId}/save`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        if (onNavigate) onNavigate('dashboard');
+      } else {
+        alert('Failed to save photo');
+      }
+    } catch (error) {
+      alert('Error saving photo');
+    }
+  };
+
   return (
     <>
       <div className="masonry-grid">
@@ -129,7 +147,7 @@ function MasonryGrid({ searchQuery, onUserClick, currentUser }) {
                 )}
               </div>
               <div className="image-actions">
-                <button className="action-btn save-btn">Save</button>
+                <button className="action-btn save-btn" onClick={(e) => { e.stopPropagation(); handleSavePhoto(photo._id); }}>Save</button>
               </div>
             </div>
           </div>

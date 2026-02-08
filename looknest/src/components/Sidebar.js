@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
-function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
-  const [activeItem, setActiveItem] = useState('home');
+function Sidebar({ onNotificationClick, onUploadClick, onViewChange, currentView, onLogout, notificationCount }) {
+  const [activeItem, setActiveItem] = useState(currentView || 'home');
   const navigate = useNavigate();
+
+  // Helper to check if item is active
+  const getActive = (item) => activeItem === item;
 
   const handleItemClick = (itemName, path, callback) => {
     setActiveItem(itemName);
@@ -16,8 +19,8 @@ function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
     <div className="sidebar">
       <div className="sidebar-top">
         {/* Home */}
-        <button 
-          className={`sidebar-item ${activeItem === 'home' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item ${getActive('home') ? 'active' : ''}`}
           title="Home"
           onClick={() => handleItemClick('home', '/')}
         >
@@ -25,10 +28,10 @@ function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
           </svg>
         </button>
-        
+
         {/* Dashboard */}
-        <button 
-          className={`sidebar-item ${activeItem === 'dashboard' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item ${getActive('dashboard') ? 'active' : ''}`}
           title="Dashboard"
           onClick={() => handleItemClick('dashboard', '/dashboard')}
         >
@@ -36,21 +39,38 @@ function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
             <path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zm0 9h7v7h-7v-7zm-9 0h7v7H4v-7z"/>
           </svg>
         </button>
-        
+
         {/* Notifications */}
-        <button 
-          className={`sidebar-item ${activeItem === 'notification' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item`}
           title="Notifications"
           onClick={() => handleItemClick('notification', null, onNotificationClick)}
+          style={{ position: 'relative' }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
           </svg>
+          {notificationCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              background: 'red',
+              color: 'white',
+              borderRadius: '50%',
+              padding: '2px 6px',
+              fontSize: 12,
+              fontWeight: 'bold',
+              minWidth: 18,
+              textAlign: 'center',
+              zIndex: 1
+            }}>{notificationCount}</span>
+          )}
         </button>
-        
+
         {/* Upload Photo */}
-        <button 
-          className={`sidebar-item ${activeItem === 'upload' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item`}
           title="Upload Photo"
           onClick={() => handleItemClick('upload', null, onUploadClick)}
         >
@@ -58,10 +78,10 @@ function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
           </svg>
         </button>
-        
+
         {/* Messages */}
-        <button 
-          className={`sidebar-item ${activeItem === 'messages' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item ${getActive('messages') ? 'active' : ''}`}
           title="Messages"
           onClick={() => handleItemClick('messages', '/messages')}
         >
@@ -70,11 +90,11 @@ function Sidebar({ onNotificationClick, onUploadClick, onLogout }) {
           </svg>
         </button>
       </div>
-      
+
       <div className="sidebar-bottom">
         {/* Logout */}
-        <button 
-          className={`sidebar-item ${activeItem === 'logout' ? 'active' : ''}`}
+        <button
+          className={`sidebar-item`}
           title="Logout"
           onClick={onLogout}
         >

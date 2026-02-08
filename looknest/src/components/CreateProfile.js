@@ -86,7 +86,7 @@ function CreateProfile({ onComplete, userData }) {
         dataToSend.profileImage = imagePreview;
       }
 
-      const response = await fetch('http://localhost:5000/api/user/profile', {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -263,3 +263,4 @@ function CreateProfile({ onComplete, userData }) {
 }
 
 export default CreateProfile;
+// adding

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -26,6 +25,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentView, setCurrentView] = useState('home');
 
   useEffect(() => {
     initSocket();
@@ -37,8 +37,10 @@ function App() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/user/profile', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch('/api/users/profile', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -46,7 +48,7 @@ function App() {
         setCurrentUser(userData);
         setIsLoggedIn(true);
 
-        // ✅ Apply theme globally
+        // Apply theme globally
         if (userData.settings?.theme === 'dark') {
           document.body.classList.add('dark');
         } else {
@@ -93,7 +95,7 @@ function App() {
   const handleSaveSettings = (data) => {
     console.log('Saved settings:', data);
 
-    // ✅ Apply theme instantly after Save
+    // Apply theme instantly after Save
     if (data.settings?.theme === 'dark') {
       document.body.classList.add('dark');
     } else {
@@ -120,51 +122,57 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="App">
-        <Navbar onSearch={handleSearch} />
-        <Sidebar 
-          onNotificationClick={() => setShowNotifications(!showNotifications)}
-          onUploadClick={() => setShowUpload(true)}
-          onLogout={handleLogout}
-          onSettingsClick={() => setShowSettings(true)} // 👈 open settings
-        />
-        <NotificationPanel 
-          isOpen={showNotifications} 
-          onClose={() => setShowNotifications(false)} 
-        />
-        <UploadModal 
-          isOpen={showUpload} 
-          onClose={() => setShowUpload(false)}
-          onUploadSuccess={handleUploadSuccess}
-        />
+    <div className="App">
+      <Navbar
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
+        onSearch={handleSearch}
+        currentUser={currentUser}
+        onProfileClick={() => setCurrentView('profile')}
+      />
+      <Sidebar
+        onViewChange={setCurrentView}
+        currentUser={currentUser}
+        onUploadClick={() => setShowUpload(true)}
+        onNotificationClick={() => setShowNotifications((prev) => !prev)}
+        onLogout={handleLogout}
+        onSettingsClick={() => setShowSettings(true)}
+      />
+      <NotificationPanel
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+      />
+      <UploadModal
+        isOpen={showUpload}
+        onClose={() => setShowUpload(false)}
+        onUploadSuccess={handleUploadSuccess}
+      />
 
-        {/* Settings Modal */}
-        <SettingsModal 
-          isOpen={showSettings} 
-          onClose={() => setShowSettings(false)} 
-          onSave={handleSaveSettings} 
-        />
+      {/* Settings Modal (merged from PR) */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSave={handleSaveSettings}
+      />
 
-        <main className="main-content">
-          <Routes>
-            <Route 
-              path="/" 
-              element={<MasonryGrid key={refreshKey} searchQuery={searchQuery} onUserClick={handleUserClick} currentUser={currentUser} />} 
-            />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route 
-              path="/user/:id" 
-              element={<UserProfile userId={selectedUserId} onMessage={handleMessage} />} 
-            />
-            <Route path="/login" element={<LandingPage onLogin={() => setIsLoggedIn(true)} onSignupComplete={handleSignupComplete} />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+      <main className="main-content">
+        {currentView === 'home' && (
+          <MasonryGrid
+            key={refreshKey}
+            searchQuery={searchQuery}
+            onUserClick={handleUserClick}
+            currentUser={currentUser}
+            onNavigate={setCurrentView}
+          />
+        )}
+        {currentView === 'dashboard' && <Dashboard currentUser={currentUser} />}
+        {currentView === 'messages' && <Messages />}
+        {currentView === 'profile' && <Profile />}
+        {currentView === 'user-profile' && (
+          <UserProfile userId={selectedUserId} onMessage={handleMessage} />
+        )}
+      </main>
+    </div>
   );
 }
 

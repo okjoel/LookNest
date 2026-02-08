@@ -7,6 +7,7 @@ function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showCarousel, setShowCarousel] = useState(false);
@@ -104,7 +105,6 @@ function UploadModal({ isOpen, onClose, onUploadSuccess }) {
 
     try {
       const token = localStorage.getItem('token');
-      
       const response = await fetch('http://localhost:5000/api/photos', {
         method: 'POST',
         headers: {
@@ -114,24 +114,23 @@ function UploadModal({ isOpen, onClose, onUploadSuccess }) {
         body: JSON.stringify({
           title,
           description,
+          comment, // Add comment to request
           imageUrls: imagePreviews
         })
       });
-
       const data = await response.json();
 
       if (response.ok) {
         // Reset form
         setTitle('');
         setDescription('');
+        setComment('');
         setSelectedFiles([]);
         setImagePreviews([]);
-        
         // Call success callback
         if (onUploadSuccess) {
           onUploadSuccess(data.photo);
         }
-        
         onClose();
       } else {
         setError(data.message || 'Upload failed');
@@ -214,6 +213,17 @@ function UploadModal({ isOpen, onClose, onUploadSuccess }) {
                 onChange={(e) => setDescription(e.target.value)}
                 className="form-textarea"
                 rows="4"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Comment</label>
+              <textarea
+                placeholder="Add a comment (optional)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="form-textarea"
+                rows="2"
               />
             </div>
 
